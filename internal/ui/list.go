@@ -161,37 +161,42 @@ func (m *ListModel) View() string {
 	lines = append(lines, titleStyle.Render("SSH Hosts"))
 
 	// Account for panel padding (1 top + 1 bottom) and title (1 line + margin)
-	// Each entry is 2 lines, so calculate how many entries can fit
+	// Each entry can be 2-3 lines (2 lines normally, 3 when tags wrap)
 	availableHeight := m.height - 2 - 2 // panel padding top/bottom
 	titleHeight := 2                    // title + margin
 	availableForEntries := availableHeight - titleHeight
-	visibleEntries := max(1, availableForEntries/2)
+	// Use a conservative estimate: assume 2.5 lines per entry on average
+	visibleEntries := max(1, availableForEntries/3)
 
 	start := max(0, m.selected-visibleEntries/2)
-	end := min(len(m.filtered), start+visibleEntries)
+	end := min(len(m.filtered), start+visibleEntries*2) // Allow more entries to account for variable heights
 
 	entryLinesCount := 0
-	for i := start; i < end; i++ {
+	actualEnd := start
+	
+	for i := start; i < end && entryLinesCount < availableForEntries; i++ {
 		entry := m.filtered[i]
 		entryLines := m.formatEntry(entry, i == m.selected)
-		// formatEntry returns a multi-line string, split it
 		splitLines := strings.Split(entryLines, "\n")
+		if entryLinesCount+len(splitLines) > availableForEntries {
+			break
+		}
 		for _, line := range splitLines {
 			lines = append(lines, line)
 			entryLinesCount++
 		}
+		actualEnd = i + 1
 	}
 
-	if len(m.filtered) > visibleEntries {
-		// Show scroll indicator
-		if start > 0 {
-			lines = append([]string{lines[0], "..."}, lines[1:]...)
-			entryLinesCount++
-		}
-		if end < len(m.filtered) {
-			lines = append(lines, "...")
-			entryLinesCount++
-		}
+	// Show scroll indicators
+	hasMoreAbove := start > 0
+	hasMoreBelow := actualEnd < len(m.filtered)
+	
+	if hasMoreAbove {
+		lines = append([]string{lines[0], "..."}, lines[1:]...)
+	}
+	if hasMoreBelow {
+		lines = append(lines, "...")
 	}
 
 	// Fill remaining space to ensure consistent height and proper border rendering
