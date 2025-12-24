@@ -40,3 +40,13 @@ checksum:
 changelog:
   sort: asc
 
+brews:
+  - name: gosshit
+    repository:
+      owner: nicklasos
+      name: homebrew-tap
+    directory: Formula
+    homepage: https://github.com/nicklasos/gosshit
+    description: "A vim-inspired TUI for managing SSH config files"
+    license: MIT
+
