@@ -173,7 +173,7 @@ func (m *ListModel) View() string {
 
 	entryLinesCount := 0
 	actualEnd := start
-	
+
 	for i := start; i < end && entryLinesCount < availableForEntries; i++ {
 		entry := m.filtered[i]
 		entryLines := m.formatEntry(entry, i == m.selected)
@@ -191,7 +191,7 @@ func (m *ListModel) View() string {
 	// Show scroll indicators
 	hasMoreAbove := start > 0
 	hasMoreBelow := actualEnd < len(m.filtered)
-	
+
 	if hasMoreAbove {
 		lines = append([]string{lines[0], "..."}, lines[1:]...)
 	}
