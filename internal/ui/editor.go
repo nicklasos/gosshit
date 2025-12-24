@@ -33,6 +33,7 @@ const (
 	fieldPort
 	fieldIdentityFile
 	fieldDescription
+	fieldTags
 	fieldCount
 )
 
@@ -64,6 +65,9 @@ func NewEditorModel() *EditorModel {
 	m.fields[fieldDescription] = textinput.New()
 	m.fields[fieldDescription].Placeholder = "Description (optional)"
 
+	m.fields[fieldTags] = textinput.New()
+	m.fields[fieldTags].Placeholder = "prod,dev,stage (comma-separated, optional)"
+
 	return m
 }
 
@@ -85,6 +89,12 @@ func (m *EditorModel) SetEntry(entry *sshconfig.HostEntry) {
 		m.fields[fieldPort].SetValue(entry.Port)
 		m.fields[fieldIdentityFile].SetValue(entry.IdentityFile)
 		m.fields[fieldDescription].SetValue(entry.Description)
+		// Convert tags slice to comma-separated string
+		if len(entry.Tags) > 0 {
+			m.fields[fieldTags].SetValue(strings.Join(entry.Tags, ", "))
+		} else {
+			m.fields[fieldTags].SetValue("")
+		}
 	} else {
 		// Default values for new entries
 		m.fields[fieldHost].SetValue("")
@@ -93,6 +103,7 @@ func (m *EditorModel) SetEntry(entry *sshconfig.HostEntry) {
 		m.fields[fieldPort].SetValue("22")
 		m.fields[fieldIdentityFile].SetValue("")
 		m.fields[fieldDescription].SetValue("")
+		m.fields[fieldTags].SetValue("")
 	}
 
 	// Focus first field
@@ -226,6 +237,19 @@ func (m *EditorModel) Validate() error {
 
 // GetEntry returns the entry from the form fields
 func (m *EditorModel) GetEntry() *sshconfig.HostEntry {
+	// Parse tags from comma-separated string
+	var tags []string
+	tagsStr := strings.TrimSpace(m.fields[fieldTags].Value())
+	if tagsStr != "" {
+		parts := strings.Split(tagsStr, ",")
+		for _, tag := range parts {
+			tag = strings.TrimSpace(tag)
+			if tag != "" {
+				tags = append(tags, tag)
+			}
+		}
+	}
+
 	return &sshconfig.HostEntry{
 		Host:         m.fields[fieldHost].Value(),
 		HostName:     m.fields[fieldHostName].Value(),
@@ -233,6 +257,7 @@ func (m *EditorModel) GetEntry() *sshconfig.HostEntry {
 		Port:         m.fields[fieldPort].Value(),
 		IdentityFile: m.fields[fieldIdentityFile].Value(),
 		Description:  m.fields[fieldDescription].Value(),
+		Tags:         tags,
 	}
 }
 
@@ -254,7 +279,7 @@ func (m *EditorModel) updateViewportContent() {
 	lines = append(lines, "")
 
 	// Field labels
-	labels := []string{"Host:", "HostName:", "User:", "Port:", "IdentityFile:", "Description:"}
+	labels := []string{"Host:", "HostName:", "User:", "Port:", "IdentityFile:", "Description:", "Tags:"}
 	for i, label := range labels {
 		lines = append(lines, "")
 		lines = append(lines, labelStyle.Render(label))

@@ -91,6 +91,17 @@ func (m *DetailModel) View() string {
 		lines = append(lines, valueStyle.Foreground(subtleColor).Render("(not set)"))
 	}
 
+	// Tags
+	if len(m.entry.Tags) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, labelStyle.Render("Tags:"))
+		var tagBadges []string
+		for _, tag := range m.entry.Tags {
+			tagBadges = append(tagBadges, formatTagBadge(tag))
+		}
+		lines = append(lines, strings.TrimSpace(strings.Join(tagBadges, " ")))
+	}
+
 	// Visit count
 	if m.visitCount > 0 {
 		lines = append(lines, "")

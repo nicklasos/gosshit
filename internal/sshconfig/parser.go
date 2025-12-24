@@ -140,25 +140,37 @@ func ParseConfig(path string) ([]*HostEntry, []string, error) {
 				}
 			}
 
-			// Extract description from comment buffer
+			// Extract description and tags from comment buffer
 			desc := ""
+			var tags []string
 			for _, c := range commentBuffer {
 				trimmed := strings.TrimSpace(c)
 				if trimmed == "" {
 					// Skip empty lines
 					continue
 				}
-				if strings.HasPrefix(trimmed, "# Description:") {
+				if strings.HasPrefix(trimmed, "# Tags:") {
+					// Extract tags (comma-separated)
+					tagStr := strings.TrimPrefix(trimmed, "# Tags:")
+					tagStr = strings.TrimSpace(tagStr)
+					if tagStr != "" {
+						parts := strings.Split(tagStr, ",")
+						for _, tag := range parts {
+							tag = strings.TrimSpace(tag)
+							if tag != "" {
+								tags = append(tags, tag)
+							}
+						}
+					}
+				} else if strings.HasPrefix(trimmed, "# Description:") {
 					// Explicit description format
 					desc = strings.TrimPrefix(trimmed, "# Description:")
 					desc = strings.TrimSpace(desc)
-					break
 				} else if strings.HasPrefix(trimmed, "#") && !strings.HasPrefix(trimmed, "##") {
 					// Regular comment line - use as description if we don't have one yet
 					if desc == "" {
 						desc = strings.TrimPrefix(trimmed, "#")
 						desc = strings.TrimSpace(desc)
-						// Don't break - keep looking for explicit Description format
 					}
 				}
 			}
@@ -166,6 +178,7 @@ func ParseConfig(path string) ([]*HostEntry, []string, error) {
 			currentEntry = &HostEntry{
 				Host:        value,
 				Description: desc,
+				Tags:        tags,
 				StartLine:   lineNum,
 				RawLines:    make([]string, 0),
 			}

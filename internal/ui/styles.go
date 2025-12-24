@@ -99,4 +99,17 @@ var (
 
 	warningStyle = lipgloss.NewStyle().
 			Foreground(warningColor)
+
+	// Tag badge styles
+	tagProdStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("1")) // Red
+
+	tagDevStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("2")) // Green
+
+	tagStageStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("3")) // Yellow
+
+	tagDefaultStyle = lipgloss.NewStyle().
+			Foreground(subtleColor)
 )

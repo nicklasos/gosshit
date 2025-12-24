@@ -8,6 +8,21 @@ import (
 	"github.com/nicklasos/gosshit/internal/sshconfig"
 )
 
+// formatTagBadge returns a styled badge for a tag
+func formatTagBadge(tag string) string {
+	tagLower := strings.ToLower(tag)
+	switch tagLower {
+	case "prod":
+		return tagProdStyle.Render("[" + tag + "]")
+	case "dev":
+		return tagDevStyle.Render("[" + tag + "]")
+	case "stage":
+		return tagStageStyle.Render("[" + tag + "]")
+	default:
+		return tagDefaultStyle.Render("[" + tag + "]")
+	}
+}
+
 // ListModel represents the left panel list view
 type ListModel struct {
 	entries     []*sshconfig.HostEntry
@@ -74,11 +89,20 @@ func (m *ListModel) ApplyFilter() {
 	var filtered []*sshconfig.HostEntry
 	term := strings.ToLower(m.searchTerm)
 	for _, entry := range m.entries {
+		// Check host, hostname, user, description
 		if strings.Contains(strings.ToLower(entry.Host), term) ||
 			strings.Contains(strings.ToLower(entry.HostName), term) ||
 			strings.Contains(strings.ToLower(entry.User), term) ||
 			strings.Contains(strings.ToLower(entry.Description), term) {
 			filtered = append(filtered, entry)
+			continue
+		}
+		// Check tags
+		for _, tag := range entry.Tags {
+			if strings.Contains(strings.ToLower(tag), term) {
+				filtered = append(filtered, entry)
+				break
+			}
 		}
 	}
 
@@ -194,32 +218,62 @@ func (m *ListModel) formatEntry(entry *sshconfig.HostEntry, selected bool) strin
 		hostname += ":" + entry.Port
 	}
 
-	// Main line: Host alias
-	mainLine := entry.Host
+	// Main line: Host alias with tags
+	hostAlias := entry.Host
+	// Add tag badges
+	var tagBadges []string
+	for _, tag := range entry.Tags {
+		tagBadges = append(tagBadges, formatTagBadge(tag))
+	}
+
+	mainLine := hostAlias
+	var tagLine string
+	if len(tagBadges) > 0 {
+		if len(tagBadges) > 2 {
+			// More than 2 tags: put all tags on a new line
+			tagLine = "  " + strings.Join(tagBadges, " ")
+		} else {
+			// 2 or fewer tags: all on main line
+			mainLine += " " + strings.Join(tagBadges, " ")
+		}
+	}
 	if selected {
 		mainLine = "▶ " + mainLine
 	} else {
 		mainLine = "  " + mainLine
 	}
+	// tagLine already has "  " prefix for alignment
 
 	// Second line: IP/hostname in smaller, subtler text (indented to match main line)
 	subLine := "  " + hostname
 
 	// Style based on selection
-	var styledMain, styledSub string
+	var linesToJoin []string
 	if selected {
-		styledMain = listItemSelectedStyle.Render(mainLine)
-		// Sub-line needs same border styling but different text color
-		// Keep the border to maintain alignment, use accent color for visibility
-		styledSub = listItemSelectedStyle.Copy().
+		linesToJoin = append(linesToJoin, listItemSelectedStyle.Render(mainLine))
+		if tagLine != "" {
+			// Style tag line with same border styling
+			linesToJoin = append(linesToJoin, listItemSelectedStyle.Copy().
+				Foreground(accentColor).
+				Render(tagLine))
+		}
+		// IP line needs same border styling but different text color
+		linesToJoin = append(linesToJoin, listItemSelectedStyle.Copy().
 			Foreground(accentColor). // Use accent color for IP when selected
-			Render(subLine)
+			Render(subLine))
 	} else {
-		styledMain = listItemStyle.Render(mainLine)
-		styledSub = listItemStyle.Copy().Foreground(subtleColor).Render(subLine)
+		linesToJoin = append(linesToJoin, listItemStyle.Render(mainLine))
+		if tagLine != "" {
+			linesToJoin = append(linesToJoin, listItemStyle.Copy().
+				Foreground(subtleColor).
+				Render(tagLine))
+		}
+		linesToJoin = append(linesToJoin, listItemStyle.Copy().
+			Foreground(subtleColor).
+			Render(subLine))
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, styledMain, styledSub)
+	return lipgloss.JoinVertical(lipgloss.Left, linesToJoin...)
 }
 
 func max(a, b int) int {

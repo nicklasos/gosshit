@@ -71,6 +71,14 @@ func writeEntry(file *os.File, entry *HostEntry) error {
 			}
 		}
 
+		// Write tags comment if we have any
+		if len(entry.Tags) > 0 {
+			tagsStr := strings.Join(entry.Tags, ", ")
+			if _, err := file.WriteString("# Tags: " + tagsStr + "\n"); err != nil {
+				return err
+			}
+		}
+
 		// Detect indentation style from the first non-empty, non-comment, non-Host line
 		indent := "    " // default to 4 spaces
 		for _, l := range entry.RawLines {
@@ -109,8 +117,8 @@ func writeEntry(file *os.File, entry *HostEntry) error {
 				continue
 			}
 			if strings.HasPrefix(trimmed, "#") {
-				// Skip description comments as we write them explicitly above
-				if strings.Contains(trimmed, "# Description:") {
+				// Skip description and tags comments as we write them explicitly above
+				if strings.Contains(trimmed, "# Description:") || strings.Contains(trimmed, "# Tags:") {
 					continue
 				}
 				// Preserve other comments
@@ -247,6 +255,13 @@ func writeEntry(file *os.File, entry *HostEntry) error {
 	// Write new entry from scratch
 	if entry.Description != "" {
 		if _, err := file.WriteString("# Description: " + entry.Description + "\n"); err != nil {
+			return err
+		}
+	}
+
+	if len(entry.Tags) > 0 {
+		tagsStr := strings.Join(entry.Tags, ", ")
+		if _, err := file.WriteString("# Tags: " + tagsStr + "\n"); err != nil {
 			return err
 		}
 	}

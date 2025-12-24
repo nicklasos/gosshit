@@ -8,6 +8,7 @@ type HostEntry struct {
 	Port         string   // Port directive
 	IdentityFile string   // IdentityFile directive
 	Description  string   // Extracted from comment above Host entry
+	Tags         []string // Tags extracted from # Tags: comment
 	Comment      string   // Original comment block
 	RawLines     []string // Original lines for preservation
 	StartLine    int      // Starting line number in original file
