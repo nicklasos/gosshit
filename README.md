@@ -16,13 +16,13 @@ A vim-inspired terminal user interface (TUI) for managing SSH config files. Easi
 
 ## Installation
 
-### Option 1: Homebrew (macOS/Linux)
+### Option 1: Homebrew (macOS/Linux) 🍺
 
 ```bash
 brew install nicklasos/tap/gosshit
 ```
 
-### Option 2: Download Binary
+### Option 2: Download Binary 📦
 
 Download the latest binary for your platform from the [releases page](https://github.com/nicklasos/gosshit/releases).
 
