@@ -36,3 +36,6 @@ gosshit
 # SSH config backup files (from cleanup operations)
 *.backup
 
+# GoReleaser
+dist/
+

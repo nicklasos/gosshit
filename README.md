@@ -16,6 +16,43 @@ A vim-inspired terminal user interface (TUI) for managing SSH config files. Easi
 
 ## Installation
 
+### Option 1: Homebrew (macOS/Linux)
+
+```bash
+brew install nicklasos/tap/gosshit
+```
+
+### Option 2: Download Binary
+
+Download the latest binary for your platform from the [releases page](https://github.com/nicklasos/gosshit/releases).
+
+**macOS:**
+```bash
+# Intel Mac
+curl -L https://github.com/nicklasos/gosshit/releases/latest/download/gosshit_Darwin_x86_64.tar.gz | tar xz
+sudo mv gosshit /usr/local/bin/
+
+# Apple Silicon (M1/M2)
+curl -L https://github.com/nicklasos/gosshit/releases/latest/download/gosshit_Darwin_arm64.tar.gz | tar xz
+sudo mv gosshit /usr/local/bin/
+```
+
+**Linux:**
+```bash
+# AMD64
+curl -L https://github.com/nicklasos/gosshit/releases/latest/download/gosshit_Linux_x86_64.tar.gz | tar xz
+sudo mv gosshit /usr/local/bin/
+
+# ARM64
+curl -L https://github.com/nicklasos/gosshit/releases/latest/download/gosshit_Linux_arm64.tar.gz | tar xz
+sudo mv gosshit /usr/local/bin/
+```
+
+**Windows:**
+Download the `.zip` file from [releases](https://github.com/nicklasos/gosshit/releases) and extract it to a directory in your PATH.
+
+### Option 3: Install with Go
+
 ```bash
 go install github.com/nicklasos/gosshit@latest
 ```
@@ -45,6 +82,7 @@ The application will:
 - `a` - Add a new host entry
 - `e` - Edit the selected host entry
 - `d` - Delete the selected host entry
+- `x` - Clear all visit counts (with confirmation)
 - `Enter` - Connect to the selected host via SSH
 - `q` / `Ctrl+C` - Quit the application
 

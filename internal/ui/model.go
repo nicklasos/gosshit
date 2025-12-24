@@ -21,6 +21,7 @@ const (
 	ModeEdit
 	ModeAdd
 	ModeDelete
+	ModeClearVisits
 )
 
 // Model represents the main application model
@@ -209,6 +210,17 @@ func (m *Model) handleKeyPress(msg tea.KeyMsg) (bool, tea.Model, tea.Cmd) {
 		}
 		return false, m, nil
 
+	case ModeClearVisits:
+		switch msg.String() {
+		case "y", "Y":
+			model, cmd := m.confirmClearVisits()
+			return true, model, cmd
+		case "n", "N", "esc":
+			m.mode = ModeList
+			return true, m, nil
+		}
+		return false, m, nil
+
 	case ModeList:
 		handled, model, cmd := m.handleListKeyPress(msg)
 		return handled, model, cmd
@@ -261,6 +273,10 @@ func (m *Model) handleListKeyPress(msg tea.KeyMsg) (bool, tea.Model, tea.Cmd) {
 			m.mode = ModeDelete
 			m.deleteConfirm = false
 		}
+		return true, m, nil
+
+	case "x":
+		m.mode = ModeClearVisits
 		return true, m, nil
 
 	case "enter":
@@ -413,6 +429,40 @@ func (m *Model) confirmDelete() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *Model) confirmClearVisits() (tea.Model, tea.Cmd) {
+	// Clear all visit counts
+	m.tracker.ClearAll()
+
+	// Save the cleared tracker
+	err := m.tracker.Save()
+	if err != nil {
+		m.err = err
+		m.mode = ModeList
+		return m, nil
+	}
+
+	// Re-sort entries (now they'll be in alphabetical order since all counts are 0)
+	sortedHosts := m.tracker.SortByVisits(getHostNames(m.entries))
+	sortedEntries := sortEntriesByHosts(m.entries, sortedHosts)
+
+	// Reset visit counts display
+	visitCounts := make(map[string]int)
+	for _, e := range sortedEntries {
+		visitCounts[e.Host] = 0
+	}
+
+	m.entries = sortedEntries
+	m.listModel.SetEntries(sortedEntries)
+	m.listModel.SetVisitCounts(visitCounts)
+	m.listModel.SetSelected(0)
+	if len(sortedEntries) > 0 {
+		m.updateDetailView()
+	}
+
+	m.mode = ModeList
+	return m, nil
+}
+
 // connectToHost connects to the selected host via SSH
 func (m *Model) connectToHost(entry *sshconfig.HostEntry) (tea.Model, tea.Cmd) {
 	// Increment visit count
@@ -446,6 +496,8 @@ func (m *Model) View() string {
 		return m.renderEditor()
 	case ModeDelete:
 		return m.renderDeleteConfirm()
+	case ModeClearVisits:
+		return m.renderClearVisitsConfirm()
 	default:
 		return m.renderList()
 	}
@@ -462,7 +514,7 @@ func (m *Model) renderList() string {
 	status := lipgloss.NewStyle().
 		Foreground(fgColor).
 		Padding(0, 1).
-		Render("j/k: navigate | /: search | a: add | e: edit | d: delete | enter: connect | q: quit")
+		Render("j/k: navigate | /: search | a: add | e: edit | d: delete | x: clear visits | enter: connect | q: quit")
 
 	return lipgloss.JoinVertical(lipgloss.Left, content, status)
 }
@@ -504,6 +556,15 @@ func (m *Model) renderDeleteConfirm() string {
 	msg := fmt.Sprintf("Delete host '%s'? (y/n)", entry.Host)
 	return detailPanelStyle.Width(m.width - 4).Height(10).Render(
 		titleStyle.Render("Confirm Delete") + "\n\n" +
+			warningStyle.Render(msg) + "\n\n" +
+			helpStyle.Render("y: confirm | n/Esc: cancel"),
+	)
+}
+
+func (m *Model) renderClearVisitsConfirm() string {
+	msg := "Clear all visit counts? This will reset the visit history for all hosts."
+	return detailPanelStyle.Width(m.width - 4).Height(10).Render(
+		titleStyle.Render("Clear Visit Counts") + "\n\n" +
 			warningStyle.Render(msg) + "\n\n" +
 			helpStyle.Render("y: confirm | n/Esc: cancel"),
 	)

@@ -1,4 +1,4 @@
-.PHONY: help build install test test-verbose coverage clean run fmt lint vet
+.PHONY: help build install test test-verbose coverage clean run fmt lint vet release snapshot
 
 # Default target
 help:
@@ -14,6 +14,8 @@ help:
 	@echo "  make lint          - Run golangci-lint (if installed)"
 	@echo "  make vet           - Run go vet"
 	@echo "  make check         - Run fmt, vet, and test"
+	@echo "  make release       - Create a release with GoReleaser"
+	@echo "  make snapshot      - Create a snapshot build with GoReleaser"
 
 # Build the binary
 build:
@@ -76,4 +78,22 @@ vet:
 # Run all checks
 check: fmt vet test
 	@echo "All checks passed!"
+
+# Create a release with GoReleaser (requires git tag)
+release:
+	@echo "Creating release with GoReleaser..."
+	@if command -v goreleaser > /dev/null; then \
+		goreleaser release --clean; \
+	else \
+		echo "GoReleaser not installed. Install with: brew install goreleaser"; \
+	fi
+
+# Create a snapshot build (no git tag required)
+snapshot:
+	@echo "Creating snapshot build..."
+	@if command -v goreleaser > /dev/null; then \
+		goreleaser build --snapshot --clean; \
+	else \
+		echo "GoReleaser not installed. Install with: brew install goreleaser"; \
+	fi
 
