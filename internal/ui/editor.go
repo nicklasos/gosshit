@@ -56,7 +56,7 @@ func NewEditorModel() *EditorModel {
 	m.fields[fieldPort].Placeholder = "22"
 
 	m.fields[fieldIdentityFile] = textinput.New()
-	m.fields[fieldIdentityFile].Placeholder = "~/.ssh/id_rsa (optional)"
+	m.fields[fieldIdentityFile].Placeholder = "~/.ssh/id_rsa (optional - enter path manually)"
 
 	m.fields[fieldDescription] = textinput.New()
 	m.fields[fieldDescription].Placeholder = "Description (optional)"
@@ -163,13 +163,6 @@ func (m *EditorModel) Update(msg tea.Msg) (*EditorModel, tea.Cmd) {
 		case "esc":
 			// Will be handled by parent model
 			return m, nil
-		case "ctrl+k":
-			// Open key selector when IdentityFile field is focused
-			if m.focused == fieldIdentityFile {
-				m.selectingKey = true
-				cmd := m.keySelector.Open()
-				return m, cmd
-			}
 		}
 	}
 
@@ -255,9 +248,6 @@ func (m *EditorModel) View() string {
 	// Help text
 	lines = append(lines, "")
 	helpText := "Tab: next field | Shift+Tab: previous field | Enter: save | Esc: cancel"
-	if m.focused == fieldIdentityFile {
-		helpText += " | Ctrl+K: select key"
-	}
 	lines = append(lines, helpStyle.Render(helpText))
 
 	content := strings.Join(lines, "\n")

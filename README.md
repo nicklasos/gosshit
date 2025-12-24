@@ -13,6 +13,7 @@ A vim-inspired terminal user interface (TUI) for managing SSH config files. Easi
 - **Search functionality**: Quickly find hosts by name, hostname, user, or description
 - **Preserves formatting**: Maintains comments and formatting in your SSH config file
 - **Descriptions**: Add descriptions to hosts for better organization
+- **Clear visit history**: Reset visit counts with `x` hotkey
 
 ## Installation
 
@@ -96,7 +97,6 @@ The application will:
 
 - `Tab` - Move to the next field
 - `Shift+Tab` - Move to the previous field
-- `Ctrl+K` - Open SSH key selector (when IdentityFile field is focused)
 - `Enter` - Save changes
 - `Esc` - Cancel editing and return to normal mode
 
@@ -124,7 +124,7 @@ Host prod
 - **HostName** - The actual hostname or IP address (required)
 - **User** - Username for SSH connection (optional, defaults to "root" in editor)
 - **Port** - SSH port (optional, defaults to "22" in editor)
-- **IdentityFile** - Path to SSH private key (optional, use Ctrl+K in editor to select)
+- **IdentityFile** - Path to SSH private key (optional, enter path manually)
 - **Description** - Added as a comment above the Host entry
 
 ## Visit Tracking
