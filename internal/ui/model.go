@@ -430,11 +430,8 @@ func (m *Model) confirmDelete() (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) confirmClearVisits() (tea.Model, tea.Cmd) {
-	// Clear all visit counts
-	m.tracker.ClearAll()
-
-	// Save the cleared tracker
-	err := m.tracker.Save()
+	// Clear all visit counts and save to file
+	err := m.tracker.ClearAll()
 	if err != nil {
 		m.err = err
 		m.mode = ModeList

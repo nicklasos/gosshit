@@ -159,7 +159,8 @@ func (vt *VisitTracker) SortByVisits(hosts []string) []string {
 	return result
 }
 
-// ClearAll clears all visit counts
-func (vt *VisitTracker) ClearAll() {
+// ClearAll clears all visit counts and saves to file
+func (vt *VisitTracker) ClearAll() error {
 	vt.counts = make(map[string]int)
+	return vt.Save()
 }

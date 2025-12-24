@@ -195,3 +195,49 @@ func TestVisitTracker_NonExistentDirectory(t *testing.T) {
 		t.Errorf("Should work even if directory doesn't exist yet: got %d, want 1", got)
 	}
 }
+
+func TestVisitTracker_ClearAllSavesToFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	trackerPath := filepath.Join(tmpDir, "gosshit")
+
+	tracker1, err := NewVisitTracker()
+	if err != nil {
+		t.Fatalf("NewVisitTracker failed: %v", err)
+	}
+	tracker1.path = trackerPath
+
+	// Add some visits
+	tracker1.Increment("host1")
+	tracker1.Increment("host1")
+	tracker1.Increment("host2")
+
+	// Save initial state
+	err = tracker1.Save()
+	if err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	// Clear all (this should also save to file)
+	err = tracker1.ClearAll()
+	if err != nil {
+		t.Fatalf("ClearAll failed: %v", err)
+	}
+
+	// Verify file is cleared by loading into new tracker
+	tracker2, err2 := NewVisitTracker()
+	if err2 != nil {
+		t.Fatalf("NewVisitTracker (second) failed: %v", err2)
+	}
+	tracker2.path = trackerPath
+	err = tracker2.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if got := tracker2.GetCount("host1"); got != 0 {
+		t.Errorf("After ClearAll and reload, host1 count: got %d, want 0", got)
+	}
+	if got := tracker2.GetCount("host2"); got != 0 {
+		t.Errorf("After ClearAll and reload, host2 count: got %d, want 0", got)
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/nicklasos/gosshit/internal/sshconfig"
@@ -21,6 +22,7 @@ type EditorModel struct {
 	errorMsg     string
 	keySelector  *KeySelectorModel
 	selectingKey bool
+	viewport     viewport.Model
 }
 
 // Field indices
@@ -39,6 +41,7 @@ func NewEditorModel() *EditorModel {
 	m := &EditorModel{
 		fields:      make([]textinput.Model, fieldCount),
 		keySelector: NewKeySelectorModel(),
+		viewport:    viewport.New(0, 0),
 	}
 
 	// Initialize fields
@@ -107,6 +110,11 @@ func (m *EditorModel) SetSize(width, height int) {
 		m.fields[i].Width = fieldWidth
 	}
 	m.keySelector.SetSize(width, height)
+	// Set viewport size (accounting for borders - 2 lines top/bottom)
+	m.viewport.Width = width - 4
+	m.viewport.Height = height - 4
+	// Initialize viewport content
+	m.updateViewportContent()
 }
 
 // Update handles updates to the editor model
@@ -154,9 +162,11 @@ func (m *EditorModel) Update(msg tea.Msg) (*EditorModel, tea.Cmd) {
 		case "tab":
 			m.focused = (m.focused + 1) % fieldCount
 			m.updateFocus()
+			return m, nil
 		case "shift+tab":
 			m.focused = (m.focused - 1 + fieldCount) % fieldCount
 			m.updateFocus()
+			return m, nil
 		case "enter":
 			// Will be handled by parent model
 			return m, nil
@@ -166,10 +176,21 @@ func (m *EditorModel) Update(msg tea.Msg) (*EditorModel, tea.Cmd) {
 		}
 	}
 
-	// Update focused field
+	// Update focused field first (before viewport, so content is up to date)
 	var fieldCmd tea.Cmd
 	m.fields[m.focused], fieldCmd = m.fields[m.focused].Update(msg)
-	cmds = append(cmds, fieldCmd)
+	if fieldCmd != nil {
+		cmds = append(cmds, fieldCmd)
+	}
+
+	// Handle viewport scrolling (only if viewport is initialized)
+	if m.viewport.Height > 0 {
+		var vpCmd tea.Cmd
+		m.viewport, vpCmd = m.viewport.Update(msg)
+		if vpCmd != nil {
+			cmds = append(cmds, vpCmd)
+		}
+	}
 
 	return m, tea.Batch(cmds...)
 }
@@ -220,9 +241,17 @@ func (m *EditorModel) SetError(msg string) {
 	m.errorMsg = msg
 }
 
-// View renders the editor view
-func (m *EditorModel) View() string {
+// updateViewportContent updates the viewport with the current form content
+func (m *EditorModel) updateViewportContent() {
 	var lines []string
+
+	// Title/Header
+	title := "Edit Host"
+	if m.isNew {
+		title = "Add New Host"
+	}
+	lines = append(lines, titleStyle.Render(title))
+	lines = append(lines, "")
 
 	// Field labels
 	labels := []string{"Host:", "HostName:", "User:", "Port:", "IdentityFile:", "Description:"}
@@ -247,13 +276,37 @@ func (m *EditorModel) View() string {
 
 	// Help text
 	lines = append(lines, "")
-	helpText := "Tab: next field | Shift+Tab: previous field | Enter: save | Esc: cancel"
+	helpText := "Tab: next field | Shift+Tab: previous field | Enter: save | Esc: cancel | ↑↓: scroll"
 	lines = append(lines, helpStyle.Render(helpText))
 
 	content := strings.Join(lines, "\n")
-	// Apply the panel style with the size that was set via SetSize
-	// m.width and m.height are already reduced (see updateSizes in model.go)
-	view := detailPanelStyle.Width(m.width).Height(m.height).Render(content)
+	m.viewport.SetContent(content)
+
+	// Scroll to show focused field (each field takes ~3 lines: empty line + label + input)
+	// Account for title and empty line at top (2 lines)
+	if m.focused >= 0 && m.focused < len(labels) {
+		// Calculate approximate line number of focused field (1-indexed for content)
+		// Title takes 1 line, empty line takes 1 line, then fields start
+		estimatedLine := 2 + m.focused*3 + 1
+
+		// Check if focused field is above visible area
+		if estimatedLine < m.viewport.YOffset {
+			// Scroll to show focused field at top
+			m.viewport.SetYOffset(estimatedLine - 1)
+		} else if estimatedLine+2 > m.viewport.YOffset+m.viewport.Height {
+			// Scroll to show focused field at bottom (field takes ~3 lines)
+			m.viewport.SetYOffset(estimatedLine + 2 - m.viewport.Height)
+		}
+	}
+}
+
+// View renders the editor view
+func (m *EditorModel) View() string {
+	// Update viewport content
+	m.updateViewportContent()
+
+	// Render viewport inside panel
+	view := detailPanelStyle.Width(m.width).Height(m.height).Render(m.viewport.View())
 
 	// Show key selector on top if open
 	if m.selectingKey {

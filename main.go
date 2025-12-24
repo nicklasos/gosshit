@@ -10,7 +10,7 @@ import (
 	"github.com/nicklasos/gosshit/internal/ui"
 )
 
-const version = "1.0.2"
+const version = "1.0.3"
 
 func main() {
 	// Define flags

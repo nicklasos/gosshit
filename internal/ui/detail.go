@@ -91,20 +91,6 @@ func (m *DetailModel) View() string {
 		lines = append(lines, valueStyle.Foreground(subtleColor).Render("(not set)"))
 	}
 
-	// Connection string
-	lines = append(lines, "")
-	lines = append(lines, labelStyle.Render("Connection:"))
-	connStr := m.entry.GetConnectionString()
-	if m.entry.Port != "" {
-		connStr += ":" + m.entry.Port
-	}
-	lines = append(lines, valueStyle.Render(connStr))
-
-	// SSH command
-	lines = append(lines, "")
-	lines = append(lines, labelStyle.Render("SSH Command:"))
-	lines = append(lines, valueStyle.Foreground(accentColor).Render(m.entry.GetSSHCommand()))
-
 	// Visit count
 	if m.visitCount > 0 {
 		lines = append(lines, "")
