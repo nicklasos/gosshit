@@ -45,6 +45,7 @@ brews:
     repository:
       owner: nicklasos
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Formula
     homepage: https://github.com/nicklasos/gosshit
     description: "A vim-inspired TUI for managing SSH config files"
