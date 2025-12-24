@@ -61,15 +61,16 @@ release:
   draft: false
   prerelease: auto
 
-brews:
-  - name: gosshit
-    repository:
-      owner: nicklasos
-      name: homebrew-tap
-    directory: Formula
-    homepage: https://github.com/nicklasos/gosshit
-    description: "A vim-inspired TUI for managing SSH config files"
-    license: MIT
-    install: |
-      bin.install "gosshit"
+# Homebrew tap - disabled for now, enable when you create nicklasos/homebrew-tap repo
+# brews:
+#   - name: gosshit
+#     repository:
+#       owner: nicklasos
+#       name: homebrew-tap
+#     directory: Formula
+#     homepage: https://github.com/nicklasos/gosshit
+#     description: "A vim-inspired TUI for managing SSH config files"
+#     license: MIT
+#     install: |
+#       bin.install "gosshit"
 
