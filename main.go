@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -9,7 +10,27 @@ import (
 	"github.com/nicklasos/gosshit/internal/ui"
 )
 
+const version = "1.0.2"
+
 func main() {
+	// Define flags
+	showVersion := flag.Bool("version", false, "Show version information")
+	showCredits := flag.Bool("credits", false, "Show credits")
+	flag.Parse()
+
+	// Handle --version flag
+	if *showVersion {
+		fmt.Printf("gosshit version %s\n", version)
+		os.Exit(0)
+	}
+
+	// Handle --credits flag
+	if *showCredits {
+		fmt.Println("Named by: Stas Muzhyk")
+		fmt.Println("Everything else: Mykyta Olkhovyk")
+		os.Exit(0)
+	}
+
 	configPath := sshconfig.GetSSHConfigPath()
 
 	model, err := ui.InitialModel(configPath)
