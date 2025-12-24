@@ -112,35 +112,6 @@ func (m *DetailModel) View() string {
 		lines = append(lines, valueStyle.Render(fmt.Sprintf("%d", m.visitCount)))
 	}
 
-	// Comment block if present
-	if m.entry.Comment != "" {
-		commentLines := strings.Split(strings.TrimSpace(m.entry.Comment), "\n")
-		if len(commentLines) > 0 {
-			hasNonEmptyComments := false
-			var commentOutput []string
-
-			for _, comment := range commentLines {
-				trimmed := strings.TrimSpace(comment)
-				if trimmed != "" {
-					// Remove # prefix
-					if strings.HasPrefix(trimmed, "#") {
-						trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "#"))
-					}
-					if trimmed != "" {
-						commentOutput = append(commentOutput, valueStyle.Render(trimmed))
-						hasNonEmptyComments = true
-					}
-				}
-			}
-
-			if hasNonEmptyComments {
-				lines = append(lines, "")
-				lines = append(lines, labelStyle.Render("Comments:"))
-				lines = append(lines, commentOutput...)
-			}
-		}
-	}
-
 	content := strings.Join(lines, "\n")
 	return detailPanelStyle.Width(m.width).Height(m.height).Render(content)
 }
