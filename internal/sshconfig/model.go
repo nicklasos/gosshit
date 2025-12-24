@@ -2,15 +2,16 @@ package sshconfig
 
 // HostEntry represents a single SSH host configuration entry
 type HostEntry struct {
-	Host        string   // Host alias
-	HostName    string   // HostName directive
-	User        string   // User directive
-	Port        string   // Port directive
-	Description string   // Extracted from comment above Host entry
-	Comment     string   // Original comment block
-	RawLines    []string // Original lines for preservation
-	StartLine   int      // Starting line number in original file
-	EndLine     int      // Ending line number in original file
+	Host         string   // Host alias
+	HostName     string   // HostName directive
+	User         string   // User directive
+	Port         string   // Port directive
+	IdentityFile string   // IdentityFile directive
+	Description  string   // Extracted from comment above Host entry
+	Comment      string   // Original comment block
+	RawLines     []string // Original lines for preservation
+	StartLine    int      // Starting line number in original file
+	EndLine      int      // Ending line number in original file
 }
 
 // IsValid checks if the host entry has the minimum required fields

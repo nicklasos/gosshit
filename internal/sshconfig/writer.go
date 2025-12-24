@@ -98,6 +98,7 @@ func writeEntry(file *os.File, entry *HostEntry) error {
 		writtenHostname := false
 		writtenUser := false
 		writtenPort := false
+		writtenIdentityFile := false
 
 		// Write raw lines, updating values as needed
 		for _, line := range entry.RawLines {
@@ -182,6 +183,25 @@ func writeEntry(file *os.File, entry *HostEntry) error {
 					// Port was removed, skip this line
 					continue
 				}
+			case "identityfile":
+				writtenIdentityFile = true
+				newValue := strings.Join(parts[1:], " ")
+				if entry.IdentityFile != "" {
+					if newValue != entry.IdentityFile {
+						// Value changed, update it but preserve indentation and directive case
+						if _, err := file.WriteString(originalIndent + originalDirective + " " + entry.IdentityFile + "\n"); err != nil {
+							return err
+						}
+					} else {
+						// Value unchanged, write original line exactly as-is
+						if _, err := file.WriteString(line + "\n"); err != nil {
+							return err
+						}
+					}
+				} else {
+					// IdentityFile was removed, skip this line
+					continue
+				}
 			default:
 				// Preserve other directives as-is
 				if _, err := file.WriteString(line + "\n"); err != nil {
@@ -203,6 +223,11 @@ func writeEntry(file *os.File, entry *HostEntry) error {
 		}
 		if !writtenPort && entry.Port != "" {
 			if _, err := file.WriteString(indent + "Port " + entry.Port + "\n"); err != nil {
+				return err
+			}
+		}
+		if !writtenIdentityFile && entry.IdentityFile != "" {
+			if _, err := file.WriteString(indent + "IdentityFile " + entry.IdentityFile + "\n"); err != nil {
 				return err
 			}
 		}
@@ -235,6 +260,12 @@ func writeEntry(file *os.File, entry *HostEntry) error {
 
 	if entry.Port != "" {
 		if _, err := file.WriteString("    Port " + entry.Port + "\n"); err != nil {
+			return err
+		}
+	}
+
+	if entry.IdentityFile != "" {
+		if _, err := file.WriteString("    IdentityFile " + entry.IdentityFile + "\n"); err != nil {
 			return err
 		}
 	}

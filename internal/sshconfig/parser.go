@@ -173,6 +173,8 @@ func ParseConfig(path string) ([]*HostEntry, []string, error) {
 				currentEntry.User = value
 			case "port":
 				currentEntry.Port = value
+			case "identityfile":
+				currentEntry.IdentityFile = value
 			}
 		} else {
 			// Directive outside host block - treat as standalone

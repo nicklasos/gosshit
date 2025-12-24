@@ -83,6 +83,14 @@ func (m *DetailModel) View() string {
 		lines = append(lines, valueStyle.Foreground(subtleColor).Render("(default: 22)"))
 	}
 
+	lines = append(lines, "")
+	lines = append(lines, labelStyle.Render("IdentityFile:"))
+	if m.entry.IdentityFile != "" {
+		lines = append(lines, valueStyle.Render(m.entry.IdentityFile))
+	} else {
+		lines = append(lines, valueStyle.Foreground(subtleColor).Render("(not set)"))
+	}
+
 	// Connection string
 	lines = append(lines, "")
 	lines = append(lines, labelStyle.Render("Connection:"))

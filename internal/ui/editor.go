@@ -6,18 +6,21 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/nicklasos/gosshit/internal/sshconfig"
 )
 
 // EditorModel represents the form-based editor for host entries
 type EditorModel struct {
-	fields   []textinput.Model
-	focused  int
-	entry    *sshconfig.HostEntry
-	isNew    bool
-	width    int
-	height   int
-	errorMsg string
+	fields       []textinput.Model
+	focused      int
+	entry        *sshconfig.HostEntry
+	isNew        bool
+	width        int
+	height       int
+	errorMsg     string
+	keySelector  *KeySelectorModel
+	selectingKey bool
 }
 
 // Field indices
@@ -26,6 +29,7 @@ const (
 	fieldHostName
 	fieldUser
 	fieldPort
+	fieldIdentityFile
 	fieldDescription
 	fieldCount
 )
@@ -33,7 +37,8 @@ const (
 // NewEditorModel creates a new editor model
 func NewEditorModel() *EditorModel {
 	m := &EditorModel{
-		fields: make([]textinput.Model, fieldCount),
+		fields:      make([]textinput.Model, fieldCount),
+		keySelector: NewKeySelectorModel(),
 	}
 
 	// Initialize fields
@@ -49,6 +54,9 @@ func NewEditorModel() *EditorModel {
 
 	m.fields[fieldPort] = textinput.New()
 	m.fields[fieldPort].Placeholder = "22"
+
+	m.fields[fieldIdentityFile] = textinput.New()
+	m.fields[fieldIdentityFile].Placeholder = "~/.ssh/id_rsa (optional)"
 
 	m.fields[fieldDescription] = textinput.New()
 	m.fields[fieldDescription].Placeholder = "Description (optional)"
@@ -72,6 +80,7 @@ func (m *EditorModel) SetEntry(entry *sshconfig.HostEntry) {
 		m.fields[fieldHostName].SetValue(entry.HostName)
 		m.fields[fieldUser].SetValue(entry.User)
 		m.fields[fieldPort].SetValue(entry.Port)
+		m.fields[fieldIdentityFile].SetValue(entry.IdentityFile)
 		m.fields[fieldDescription].SetValue(entry.Description)
 	} else {
 		// Default values for new entries
@@ -79,6 +88,7 @@ func (m *EditorModel) SetEntry(entry *sshconfig.HostEntry) {
 		m.fields[fieldHostName].SetValue("")
 		m.fields[fieldUser].SetValue("root")
 		m.fields[fieldPort].SetValue("22")
+		m.fields[fieldIdentityFile].SetValue("")
 		m.fields[fieldDescription].SetValue("")
 	}
 
@@ -96,6 +106,7 @@ func (m *EditorModel) SetSize(width, height int) {
 	for i := range m.fields {
 		m.fields[i].Width = fieldWidth
 	}
+	m.keySelector.SetSize(width, height)
 }
 
 // Update handles updates to the editor model
@@ -103,7 +114,42 @@ func (m *EditorModel) Update(msg tea.Msg) (*EditorModel, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case keyLoadResult, keyLoadError:
+		// Handle key selector messages
+		if m.selectingKey {
+			selector, cmd := m.keySelector.Update(msg)
+			m.keySelector = selector
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			if !m.keySelector.IsOpen() {
+				m.selectingKey = false
+			}
+			return m, tea.Batch(cmds...)
+		}
+
+	case keySelectedMsg:
+		// Key was selected, set it in the IdentityFile field
+		if msg.key != "" {
+			m.fields[fieldIdentityFile].SetValue(msg.key)
+		}
+		m.selectingKey = false
+		return m, nil
+
 	case tea.KeyMsg:
+		// If key selector is open, handle it first
+		if m.selectingKey {
+			selector, cmd := m.keySelector.Update(msg)
+			m.keySelector = selector
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			if !m.keySelector.IsOpen() {
+				m.selectingKey = false
+			}
+			return m, tea.Batch(cmds...)
+		}
+
 		switch msg.String() {
 		case "tab":
 			m.focused = (m.focused + 1) % fieldCount
@@ -117,6 +163,13 @@ func (m *EditorModel) Update(msg tea.Msg) (*EditorModel, tea.Cmd) {
 		case "esc":
 			// Will be handled by parent model
 			return m, nil
+		case "ctrl+k":
+			// Open key selector when IdentityFile field is focused
+			if m.focused == fieldIdentityFile {
+				m.selectingKey = true
+				cmd := m.keySelector.Open()
+				return m, cmd
+			}
 		}
 	}
 
@@ -142,13 +195,16 @@ func (m *EditorModel) updateFocus() {
 // Validate validates the form fields
 func (m *EditorModel) Validate() error {
 	host := m.fields[fieldHost].Value()
-	hostname := m.fields[fieldHostName].Value()
 
 	if host == "" {
 		return fmt.Errorf("Host alias is required")
 	}
-	if hostname == "" {
-		return fmt.Errorf("HostName is required")
+	// Host * entries don't need HostName
+	if host != "*" {
+		hostname := m.fields[fieldHostName].Value()
+		if hostname == "" {
+			return fmt.Errorf("HostName is required")
+		}
 	}
 
 	return nil
@@ -157,11 +213,12 @@ func (m *EditorModel) Validate() error {
 // GetEntry returns the entry from the form fields
 func (m *EditorModel) GetEntry() *sshconfig.HostEntry {
 	return &sshconfig.HostEntry{
-		Host:        m.fields[fieldHost].Value(),
-		HostName:    m.fields[fieldHostName].Value(),
-		User:        m.fields[fieldUser].Value(),
-		Port:        m.fields[fieldPort].Value(),
-		Description: m.fields[fieldDescription].Value(),
+		Host:         m.fields[fieldHost].Value(),
+		HostName:     m.fields[fieldHostName].Value(),
+		User:         m.fields[fieldUser].Value(),
+		Port:         m.fields[fieldPort].Value(),
+		IdentityFile: m.fields[fieldIdentityFile].Value(),
+		Description:  m.fields[fieldDescription].Value(),
 	}
 }
 
@@ -181,7 +238,7 @@ func (m *EditorModel) View() string {
 	lines = append(lines, titleStyle.Render(title))
 
 	// Field labels
-	labels := []string{"Host:", "HostName:", "User:", "Port:", "Description:"}
+	labels := []string{"Host:", "HostName:", "User:", "Port:", "IdentityFile:", "Description:"}
 	for i, label := range labels {
 		lines = append(lines, "")
 		lines = append(lines, labelStyle.Render(label))
@@ -203,8 +260,21 @@ func (m *EditorModel) View() string {
 
 	// Help text
 	lines = append(lines, "")
-	lines = append(lines, helpStyle.Render("Tab: next field | Shift+Tab: previous field | Enter: save | Esc: cancel"))
+	helpText := "Tab: next field | Shift+Tab: previous field | Enter: save | Esc: cancel"
+	if m.focused == fieldIdentityFile {
+		helpText += " | Ctrl+K: select key"
+	}
+	lines = append(lines, helpStyle.Render(helpText))
 
 	content := strings.Join(lines, "\n")
-	return detailPanelStyle.Width(m.width).Height(m.height).Render(content)
+	view := detailPanelStyle.Width(m.width).Height(m.height).Render(content)
+
+	// Show key selector on top if open
+	if m.selectingKey {
+		selectorView := m.keySelector.View()
+		// Overlay the selector
+		return lipgloss.JoinVertical(lipgloss.Center, selectorView, view)
+	}
+
+	return view
 }
