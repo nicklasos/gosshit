@@ -1,0 +1,210 @@
+package ui
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/nicklasos/gosshit/internal/sshconfig"
+)
+
+// EditorModel represents the form-based editor for host entries
+type EditorModel struct {
+	fields   []textinput.Model
+	focused  int
+	entry    *sshconfig.HostEntry
+	isNew    bool
+	width    int
+	height   int
+	errorMsg string
+}
+
+// Field indices
+const (
+	fieldHost = iota
+	fieldHostName
+	fieldUser
+	fieldPort
+	fieldDescription
+	fieldCount
+)
+
+// NewEditorModel creates a new editor model
+func NewEditorModel() *EditorModel {
+	m := &EditorModel{
+		fields: make([]textinput.Model, fieldCount),
+	}
+
+	// Initialize fields
+	m.fields[fieldHost] = textinput.New()
+	m.fields[fieldHost].Placeholder = "host-alias"
+	m.fields[fieldHost].Focus()
+
+	m.fields[fieldHostName] = textinput.New()
+	m.fields[fieldHostName].Placeholder = "example.com or 192.168.1.1"
+
+	m.fields[fieldUser] = textinput.New()
+	m.fields[fieldUser].Placeholder = "root"
+
+	m.fields[fieldPort] = textinput.New()
+	m.fields[fieldPort].Placeholder = "22"
+
+	m.fields[fieldDescription] = textinput.New()
+	m.fields[fieldDescription].Placeholder = "Description (optional)"
+
+	return m
+}
+
+// Init initializes the editor model
+func (m *EditorModel) Init() tea.Cmd {
+	return textinput.Blink
+}
+
+// SetEntry sets the entry to edit (nil for new entry)
+func (m *EditorModel) SetEntry(entry *sshconfig.HostEntry) {
+	m.entry = entry
+	m.isNew = entry == nil
+	m.errorMsg = ""
+
+	if entry != nil {
+		m.fields[fieldHost].SetValue(entry.Host)
+		m.fields[fieldHostName].SetValue(entry.HostName)
+		m.fields[fieldUser].SetValue(entry.User)
+		m.fields[fieldPort].SetValue(entry.Port)
+		m.fields[fieldDescription].SetValue(entry.Description)
+	} else {
+		// Default values for new entries
+		m.fields[fieldHost].SetValue("")
+		m.fields[fieldHostName].SetValue("")
+		m.fields[fieldUser].SetValue("root")
+		m.fields[fieldPort].SetValue("22")
+		m.fields[fieldDescription].SetValue("")
+	}
+
+	// Focus first field
+	m.focused = 0
+	m.updateFocus()
+}
+
+// SetSize sets the size of the editor
+func (m *EditorModel) SetSize(width, height int) {
+	m.width = width
+	m.height = height
+	// Update field widths to match editor width
+	fieldWidth := width - 20 // Leave space for padding and borders
+	for i := range m.fields {
+		m.fields[i].Width = fieldWidth
+	}
+}
+
+// Update handles updates to the editor model
+func (m *EditorModel) Update(msg tea.Msg) (*EditorModel, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "tab":
+			m.focused = (m.focused + 1) % fieldCount
+			m.updateFocus()
+		case "shift+tab":
+			m.focused = (m.focused - 1 + fieldCount) % fieldCount
+			m.updateFocus()
+		case "enter":
+			// Will be handled by parent model
+			return m, nil
+		case "esc":
+			// Will be handled by parent model
+			return m, nil
+		}
+	}
+
+	// Update focused field
+	var fieldCmd tea.Cmd
+	m.fields[m.focused], fieldCmd = m.fields[m.focused].Update(msg)
+	cmds = append(cmds, fieldCmd)
+
+	return m, tea.Batch(cmds...)
+}
+
+// updateFocus updates which field is focused
+func (m *EditorModel) updateFocus() {
+	for i := range m.fields {
+		if i == m.focused {
+			m.fields[i].Focus()
+		} else {
+			m.fields[i].Blur()
+		}
+	}
+}
+
+// Validate validates the form fields
+func (m *EditorModel) Validate() error {
+	host := m.fields[fieldHost].Value()
+	hostname := m.fields[fieldHostName].Value()
+
+	if host == "" {
+		return fmt.Errorf("Host alias is required")
+	}
+	if hostname == "" {
+		return fmt.Errorf("HostName is required")
+	}
+
+	return nil
+}
+
+// GetEntry returns the entry from the form fields
+func (m *EditorModel) GetEntry() *sshconfig.HostEntry {
+	return &sshconfig.HostEntry{
+		Host:        m.fields[fieldHost].Value(),
+		HostName:    m.fields[fieldHostName].Value(),
+		User:        m.fields[fieldUser].Value(),
+		Port:        m.fields[fieldPort].Value(),
+		Description: m.fields[fieldDescription].Value(),
+	}
+}
+
+// SetError sets an error message
+func (m *EditorModel) SetError(msg string) {
+	m.errorMsg = msg
+}
+
+// View renders the editor view
+func (m *EditorModel) View() string {
+	var lines []string
+
+	title := "Edit Host"
+	if m.isNew {
+		title = "Add New Host"
+	}
+	lines = append(lines, titleStyle.Render(title))
+
+	// Field labels
+	labels := []string{"Host:", "HostName:", "User:", "Port:", "Description:"}
+	for i, label := range labels {
+		lines = append(lines, "")
+		lines = append(lines, labelStyle.Render(label))
+
+		var fieldView string
+		if i == m.focused {
+			fieldView = inputFocusedStyle.Render(m.fields[i].View())
+		} else {
+			fieldView = inputStyle.Render(m.fields[i].View())
+		}
+		lines = append(lines, fieldView)
+	}
+
+	// Error message
+	if m.errorMsg != "" {
+		lines = append(lines, "")
+		lines = append(lines, errorStyle.Render("Error: "+m.errorMsg))
+	}
+
+	// Help text
+	lines = append(lines, "")
+	lines = append(lines, helpStyle.Render("Tab: next field | Shift+Tab: previous field | Enter: save | Esc: cancel"))
+
+	content := strings.Join(lines, "\n")
+	return detailPanelStyle.Width(m.width).Height(m.height).Render(content)
+}
