@@ -231,12 +231,6 @@ func (m *EditorModel) SetError(msg string) {
 func (m *EditorModel) View() string {
 	var lines []string
 
-	title := "Edit Host"
-	if m.isNew {
-		title = "Add New Host"
-	}
-	lines = append(lines, titleStyle.Render(title))
-
 	// Field labels
 	labels := []string{"Host:", "HostName:", "User:", "Port:", "IdentityFile:", "Description:"}
 	for i, label := range labels {
@@ -267,6 +261,8 @@ func (m *EditorModel) View() string {
 	lines = append(lines, helpStyle.Render(helpText))
 
 	content := strings.Join(lines, "\n")
+	// Apply the panel style with the size that was set via SetSize
+	// m.width and m.height are already reduced (see updateSizes in model.go)
 	view := detailPanelStyle.Width(m.width).Height(m.height).Render(content)
 
 	// Show key selector on top if open
@@ -276,5 +272,6 @@ func (m *EditorModel) View() string {
 		return lipgloss.JoinVertical(lipgloss.Center, selectorView, view)
 	}
 
+	// Ensure the view fills the available space and shows borders properly
 	return view
 }

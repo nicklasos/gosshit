@@ -49,7 +49,7 @@ func WriteConfig(path string, entries []*HostEntry, standaloneComments []string)
 		if err := writeEntry(file, entry); err != nil {
 			return fmt.Errorf("failed to write entry: %w", err)
 		}
-		// Add blank line between entries (except after the last one)
+		// Add single blank line between entries (except after the last one)
 		if i < len(entries)-1 {
 			if _, err := file.WriteString("\n"); err != nil {
 				return fmt.Errorf("failed to write newline: %w", err)
@@ -64,19 +64,10 @@ func WriteConfig(path string, entries []*HostEntry, standaloneComments []string)
 func writeEntry(file *os.File, entry *HostEntry) error {
 	// If we have raw lines, try to preserve them (with updates)
 	if len(entry.RawLines) > 0 {
-		// Write description comment if we have one
+		// Write description comment if we have one (always write it first, skip it in raw lines)
 		if entry.Description != "" {
-			hasDesc := false
-			for _, line := range entry.RawLines {
-				if strings.Contains(line, "# Description:") {
-					hasDesc = true
-					break
-				}
-			}
-			if !hasDesc {
-				if _, err := file.WriteString("# Description: " + entry.Description + "\n"); err != nil {
-					return err
-				}
+			if _, err := file.WriteString("# Description: " + entry.Description + "\n"); err != nil {
+				return err
 			}
 		}
 
@@ -101,10 +92,28 @@ func writeEntry(file *os.File, entry *HostEntry) error {
 		writtenIdentityFile := false
 
 		// Write raw lines, updating values as needed
-		for _, line := range entry.RawLines {
+		// First, strip trailing empty lines from RawLines to prevent accumulation
+		lastNonEmpty := len(entry.RawLines) - 1
+		for lastNonEmpty >= 0 && strings.TrimSpace(entry.RawLines[lastNonEmpty]) == "" {
+			lastNonEmpty--
+		}
+		rawLinesToWrite := entry.RawLines[:lastNonEmpty+1]
+
+		for _, line := range rawLinesToWrite {
 			trimmed := strings.TrimSpace(line)
-			if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-				// Preserve comments and empty lines
+			if trimmed == "" {
+				// Preserve empty lines
+				if _, err := file.WriteString(line + "\n"); err != nil {
+					return err
+				}
+				continue
+			}
+			if strings.HasPrefix(trimmed, "#") {
+				// Skip description comments as we write them explicitly above
+				if strings.Contains(trimmed, "# Description:") {
+					continue
+				}
+				// Preserve other comments
 				if _, err := file.WriteString(line + "\n"); err != nil {
 					return err
 				}

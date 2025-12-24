@@ -2,6 +2,8 @@
 
 A vim-inspired terminal user interface (TUI) for managing SSH config files. Easily browse, search, edit, and connect to your SSH hosts with a beautiful, keyboard-driven interface.
 
+![Screenshot](screen.png)
+
 ## Features
 
 - **Two-panel interface**: Browse hosts on the left, view details on the right
@@ -56,6 +58,7 @@ The application will:
 
 - `Tab` - Move to the next field
 - `Shift+Tab` - Move to the previous field
+- `Ctrl+K` - Open SSH key selector (when IdentityFile field is focused)
 - `Enter` - Save changes
 - `Esc` - Cancel editing and return to normal mode
 
@@ -74,7 +77,17 @@ Host prod
     HostName example.com
     User deploy
     Port 22
+    IdentityFile ~/.ssh/id_rsa
 ```
+
+### Supported Fields
+
+- **Host** - The host alias (required)
+- **HostName** - The actual hostname or IP address (required)
+- **User** - Username for SSH connection (optional, defaults to "root" in editor)
+- **Port** - SSH port (optional, defaults to "22" in editor)
+- **IdentityFile** - Path to SSH private key (optional, use Ctrl+K in editor to select)
+- **Description** - Added as a comment above the Host entry
 
 ## Visit Tracking
 
@@ -94,6 +107,38 @@ To build from source:
 git clone https://github.com/nicklasos/gosshit.git
 cd gosshit
 go build -o gosshit
+```
+
+### Using the Makefile
+
+The project includes a Makefile with convenient commands:
+
+```bash
+make build         # Build the binary
+make install       # Install to GOPATH/bin
+make test          # Run tests
+make test-verbose  # Run tests with verbose output
+make coverage      # Run tests with coverage report (generates coverage.html)
+make clean         # Remove build artifacts
+make run           # Build and run the application
+make fmt           # Format code with gofmt
+make vet           # Run go vet
+make check         # Run fmt, vet, and test
+make help          # Show all available commands
+```
+
+### Running Tests
+
+```bash
+# Quick test run
+make test
+
+# Verbose test output
+make test-verbose
+
+# Generate coverage report
+make coverage
+# Opens coverage.html in your browser
 ```
 
 ## Requirements

@@ -116,12 +116,27 @@ func (m *DetailModel) View() string {
 	if m.entry.Comment != "" {
 		commentLines := strings.Split(strings.TrimSpace(m.entry.Comment), "\n")
 		if len(commentLines) > 0 {
-			lines = append(lines, "")
-			lines = append(lines, labelStyle.Render("Comments:"))
+			hasNonEmptyComments := false
+			var commentOutput []string
+
 			for _, comment := range commentLines {
-				if comment != "" {
-					lines = append(lines, valueStyle.Foreground(subtleColor).Render(comment))
+				trimmed := strings.TrimSpace(comment)
+				if trimmed != "" {
+					// Remove # prefix
+					if strings.HasPrefix(trimmed, "#") {
+						trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "#"))
+					}
+					if trimmed != "" {
+						commentOutput = append(commentOutput, valueStyle.Render(trimmed))
+						hasNonEmptyComments = true
+					}
 				}
+			}
+
+			if hasNonEmptyComments {
+				lines = append(lines, "")
+				lines = append(lines, labelStyle.Render("Comments:"))
+				lines = append(lines, commentOutput...)
 			}
 		}
 	}

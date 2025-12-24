@@ -61,19 +61,26 @@ func ParseConfig(path string) ([]*HostEntry, []string, error) {
 
 		// Handle comments
 		if strings.HasPrefix(trimmed, "#") {
-			// Check if it's a description comment
-			if strings.HasPrefix(trimmed, "# Description:") {
-				if !inHostBlock {
-					// Description before a host entry - store it for the next host
-					desc := strings.TrimPrefix(trimmed, "# Description:")
-					desc = strings.TrimSpace(desc)
-					commentBuffer = append(commentBuffer, line)
-					// Will be used when we encounter the next Host directive
-					continue
+			// Check if it's a description comment - this signals start of next host block
+			if strings.HasPrefix(trimmed, "# Description:") || (strings.HasPrefix(trimmed, "#") && !strings.HasPrefix(trimmed, "##") && inHostBlock) {
+				// If we're in a host block and see a standalone comment (not indented),
+				// it's likely the description for the NEXT host, so end current block
+				if inHostBlock && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
+					// This comment is for the next host - end current host block
+					if currentEntry != nil {
+						currentEntry.RawLines = currentHostLines
+						currentEntry.EndLine = lineNum - 1
+						if currentEntry.IsValid() {
+							entries = append(entries, currentEntry)
+						}
+					}
+					inHostBlock = false
+					currentEntry = nil
+					currentHostLines = []string{}
 				}
 			}
 
-			// Regular comment
+			// Add comment to appropriate buffer
 			if inHostBlock {
 				currentHostLines = append(currentHostLines, line)
 				if currentEntry != nil {
@@ -93,11 +100,8 @@ func ParseConfig(path string) ([]*HostEntry, []string, error) {
 					currentEntry.Comment += line + "\n"
 				}
 			} else {
-				// If we have accumulated comments outside a host block, save them
-				if len(commentBuffer) > 0 {
-					standaloneComments = append(standaloneComments, commentBuffer...)
-					commentBuffer = []string{}
-				}
+				// Keep empty lines in comment buffer - they might be between comment and Host
+				// Don't clear the buffer yet - wait for next non-empty, non-comment line
 			}
 			continue
 		}
@@ -129,7 +133,7 @@ func ParseConfig(path string) ([]*HostEntry, []string, error) {
 			inHostBlock = true
 			currentHostLines = []string{}
 
-			// Add comment buffer to new entry
+			// Add comment buffer to new entry (excluding trailing empty lines)
 			if len(commentBuffer) > 0 {
 				for _, c := range commentBuffer {
 					currentHostLines = append(currentHostLines, c)
@@ -139,10 +143,23 @@ func ParseConfig(path string) ([]*HostEntry, []string, error) {
 			// Extract description from comment buffer
 			desc := ""
 			for _, c := range commentBuffer {
-				if strings.Contains(c, "# Description:") {
-					desc = strings.TrimPrefix(c, "# Description:")
+				trimmed := strings.TrimSpace(c)
+				if trimmed == "" {
+					// Skip empty lines
+					continue
+				}
+				if strings.HasPrefix(trimmed, "# Description:") {
+					// Explicit description format
+					desc = strings.TrimPrefix(trimmed, "# Description:")
 					desc = strings.TrimSpace(desc)
 					break
+				} else if strings.HasPrefix(trimmed, "#") && !strings.HasPrefix(trimmed, "##") {
+					// Regular comment line - use as description if we don't have one yet
+					if desc == "" {
+						desc = strings.TrimPrefix(trimmed, "#")
+						desc = strings.TrimSpace(desc)
+						// Don't break - keep looking for explicit Description format
+					}
 				}
 			}
 
@@ -161,6 +178,13 @@ func ParseConfig(path string) ([]*HostEntry, []string, error) {
 			commentBuffer = []string{}
 			currentHostLines = append(currentHostLines, line)
 			continue
+		}
+
+		// If we reach here with a non-Host directive outside a host block,
+		// clear the comment buffer as it's not associated with a host
+		if !inHostBlock && len(commentBuffer) > 0 {
+			standaloneComments = append(standaloneComments, commentBuffer...)
+			commentBuffer = []string{}
 		}
 
 		// Handle other directives within a host block

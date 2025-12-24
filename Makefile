@@ -1,0 +1,79 @@
+.PHONY: help build install test test-verbose coverage clean run fmt lint vet
+
+# Default target
+help:
+	@echo "Available targets:"
+	@echo "  make build         - Build the binary"
+	@echo "  make install       - Install the binary to GOPATH/bin"
+	@echo "  make test          - Run tests"
+	@echo "  make test-verbose  - Run tests with verbose output"
+	@echo "  make coverage      - Run tests with coverage report"
+	@echo "  make clean         - Remove build artifacts"
+	@echo "  make run           - Build and run the application"
+	@echo "  make fmt           - Format code with gofmt"
+	@echo "  make lint          - Run golangci-lint (if installed)"
+	@echo "  make vet           - Run go vet"
+	@echo "  make check         - Run fmt, vet, and test"
+
+# Build the binary
+build:
+	@echo "Building gosshit..."
+	@go build -o gosshit .
+
+# Install to GOPATH/bin
+install:
+	@echo "Installing gosshit..."
+	@go install
+
+# Run tests
+test:
+	@echo "Running tests..."
+	@go test ./internal/...
+
+# Run tests with verbose output
+test-verbose:
+	@echo "Running tests (verbose)..."
+	@go test -v ./internal/...
+
+# Run tests with coverage
+coverage:
+	@echo "Running tests with coverage..."
+	@go test -cover ./internal/... -coverprofile=coverage.out
+	@go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+# Clean build artifacts
+clean:
+	@echo "Cleaning build artifacts..."
+	@rm -f gosshit
+	@rm -f coverage.out coverage.html
+	@rm -rf bin/ dist/
+
+# Build and run
+run: build
+	@echo "Running gosshit..."
+	@./gosshit
+
+# Format code
+fmt:
+	@echo "Formatting code..."
+	@go fmt ./...
+
+# Run golangci-lint (if installed)
+lint:
+	@echo "Running linter..."
+	@if command -v golangci-lint > /dev/null; then \
+		golangci-lint run ./...; \
+	else \
+		echo "golangci-lint not installed. Install with: brew install golangci-lint"; \
+	fi
+
+# Run go vet
+vet:
+	@echo "Running go vet..."
+	@go vet ./...
+
+# Run all checks
+check: fmt vet test
+	@echo "All checks passed!"
+

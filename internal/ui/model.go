@@ -292,7 +292,9 @@ func (m *Model) updateSizes() {
 
 	m.listModel.SetSize(listWidth, height)
 	m.detailModel.SetSize(detailWidth, height)
-	m.editorModel.SetSize(m.width-4, height)
+	// Editor needs space for borders and padding, similar to other panels
+	// Reduce by a bit to ensure borders are visible
+	m.editorModel.SetSize(m.width-4, m.height-4)
 }
 
 // saveEntry saves the current entry from the editor
@@ -457,10 +459,10 @@ func (m *Model) renderList() string {
 	content := lipgloss.JoinHorizontal(lipgloss.Top, listView, detailView)
 
 	// Status bar
-	status := statusBarStyle.Render(
-		fmt.Sprintf("%s | j/k: navigate | /: search | a: add | e: edit | d: delete | enter: connect | q: quit",
-			statusBarModeStyle.Render("NORMAL")),
-	)
+	status := lipgloss.NewStyle().
+		Foreground(fgColor).
+		Padding(0, 1).
+		Render("j/k: navigate | /: search | a: add | e: edit | d: delete | enter: connect | q: quit")
 
 	return lipgloss.JoinVertical(lipgloss.Left, content, status)
 }
@@ -477,10 +479,10 @@ func (m *Model) renderSearch() string {
 	if searchQuery == "" {
 		searchQuery = "(empty)"
 	}
-	status := statusBarStyle.Render(
-		fmt.Sprintf("%s | Query: %s | Enter: select | Esc: cancel",
-			statusBarModeStyle.Render("SEARCH"), searchQuery),
-	)
+	status := lipgloss.NewStyle().
+		Foreground(fgColor).
+		Padding(0, 1).
+		Render(fmt.Sprintf("Search: %s | Enter: select | Esc: cancel", searchQuery))
 
 	return lipgloss.JoinVertical(lipgloss.Left, content, status)
 }
@@ -488,7 +490,8 @@ func (m *Model) renderSearch() string {
 // renderEditor renders the editor view
 func (m *Model) renderEditor() string {
 	editorView := m.editorModel.View()
-	return editorView
+	// Add a newline at the top to push the editor down so top border is visible
+	return "\n" + lipgloss.Place(m.width, m.height-1, lipgloss.Center, lipgloss.Top, editorView)
 }
 
 // renderDeleteConfirm renders the delete confirmation view
